@@ -73,6 +73,7 @@ let currentState = {
     isPlaying: false,
     isPaused: false,
     currentPosition: 0,
+    currentPositionPercent: 0,
     startTime: null,
     pausedTime: 0,
     mirrorMode: false,
@@ -106,6 +107,11 @@ wss.on('connection', (ws, req) => {
                 case 'setFontSize':
                     currentState.fontSize = data.value;
                     broadcastToDisplays({ type: 'setFontSize', value: data.value });
+                    break;
+                    
+                case 'setPosition':
+                    currentState.currentPositionPercent = Math.max(0, Math.min(100, Number(data.value) || 0));
+                    broadcastToDisplays({ type: 'setPosition', value: currentState.currentPositionPercent });
                     break;
                     
                 case 'setSegmentLength':
@@ -176,6 +182,7 @@ wss.on('connection', (ws, req) => {
                     currentState.isPlaying = false;
                     currentState.isPaused = false;
                     currentState.currentPosition = 0;
+                    currentState.currentPositionPercent = 0;
                     currentState.startTime = null;
                     currentState.pausedTime = 0;
                     broadcastToDisplays({ type: 'reset' });

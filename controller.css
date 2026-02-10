@@ -518,3 +518,20 @@ body {
         justify-content: center;
     }
 }
+.seek-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.control-btn.secondary {
+    background: #7f8c8d;
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: auto;
+}
+
+.control-btn.secondary:hover {
+    background: #636e72;
+}
