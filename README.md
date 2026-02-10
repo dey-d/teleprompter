@@ -27,7 +27,7 @@ The clean, distraction-free display optimized for teleprompter use:
 - **Controller-Display Architecture**: Separate interfaces connected via WebSocket
 - **Manuscript Upload**: Support for text files (.txt) and Word documents (.docx)
 - **Manuscript Formatting**: Professional teleprompter formatting options
-- **Configurable Speed**: Adjustable reading speed from 60-300 words per minute
+- **Configurable Speed**: Adjustable reading speed from 10-600 words per minute
 - **Segment Timing**: Set custom segment lengths with countdown timer
 - **Scheduled Start**: Set future start times with countdown display
 - **Duration Calculations**: Real-time calculation of expected reading time vs. segment length
@@ -35,7 +35,7 @@ The clean, distraction-free display optimized for teleprompter use:
 - **Professional Interface**: Dark theme optimized for teleprompter use
 - **Live Text Editing**: Edit text directly in the controller
 - **Auto-scrolling**: Smooth text scrolling based on reading speed
-- **Playback Controls**: Start, pause, and reset functionality
+- **Playback Controls**: Start, pause, reset, and seek/rewind/forward functionality
 - **Multiple Displays**: Support for multiple synchronized displays
 - **Mirror Mode**: For use with teleprompter hardware
 - **Fullscreen Support**: F11 or F key for fullscreen mode
@@ -92,7 +92,7 @@ docker run -p 3000:3000 -e PORT=3000 open-teleprompter
 2. **Open the Display**: Navigate to `/display.html` for the clean teleprompter display
 3. **Load Content**: Upload a manuscript file or type/paste text directly in the controller
 4. **Configure Settings**:
-   - Set your reading speed (words per minute)
+   - Set your reading speed with precise 1 WPM control (10-600 words per minute)
    - Configure segment length (minutes and seconds)
    - Set scheduled start time (optional)
    - Adjust font size for optimal readability
@@ -100,7 +100,7 @@ docker run -p 3000:3000 -e PORT=3000 open-teleprompter
    - Toggle on-air indicator
 5. **Monitor Duration**: Check the word count and expected duration vs. your segment length
 6. **Start Prompting**: Click Start to begin auto-scrolling text (on-air indicator activates automatically)
-7. **Control Playback**: Use Pause/Resume and Reset as needed
+7. **Control Playback**: Use Pause/Resume, Reset, and the new position slider with ±5% skip buttons to quickly rewind or move forward
 
 ## File Structure
 

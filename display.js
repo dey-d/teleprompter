@@ -4,6 +4,8 @@ class TeleprompterDisplay {
         this.isPlaying = false;
         this.isPaused = false;
         this.currentPosition = 0;
+        this.currentPositionPercent = 0;
+        this.lastFrameTime = null;
         this.startTime = null;
         this.pausedTime = 0;
         this.segmentDuration = 10 * 60 * 1000;
@@ -122,7 +124,11 @@ class TeleprompterDisplay {
                 break;
                 
             case 'setSpeed':
-                this.speed = data.value;
+                this.speed = Math.max(10, parseInt(data.value, 10) || 150);
+                break;
+
+            case 'setPosition':
+                this.setPosition(data.value);
                 break;
                 
             case 'setFontSize':
@@ -183,9 +189,13 @@ class TeleprompterDisplay {
             this.setPrompterText(state.text);
         }
         
-        this.speed = state.speed;
+        this.speed = Math.max(10, parseInt(state.speed, 10) || 150);
         this.fontSize = state.fontSize;
         this.segmentDuration = (state.segmentLength || 600) * 1000; // Convert seconds to milliseconds
+
+        if (typeof state.currentPositionPercent === 'number') {
+            this.setPosition(state.currentPositionPercent);
+        }
         
         this.prompterText.style.fontSize = this.fontSize + 'px';
         this.setMirrorMode(state.mirrorMode);
@@ -318,6 +328,8 @@ class TeleprompterDisplay {
         this.isPlaying = false;
         this.isPaused = false;
         this.currentPosition = 0;
+        this.currentPositionPercent = 0;
+        this.lastFrameTime = null;
         this.startTime = null;
         this.pausedTime = 0;
         
@@ -325,33 +337,37 @@ class TeleprompterDisplay {
         this.stopTimer();
         
         // Reset text position to starting position (below screen)
-        this.prompterText.style.transform = 'translateY(0%)';
+        this.applyTransform();
         this.updateDisplay();
     }
     
     startScrolling() {
-        const scroll = () => {
+        this.lastFrameTime = null;
+
+        const scroll = (timestamp) => {
             if (!this.isPlaying) return;
-            
-            // Calculate scroll speed based on words per minute
-            const wordsPerSecond = this.speed / 60;
-            const pixelsPerSecond = wordsPerSecond * 12; // Approximate pixels per word
-            const pixelsPerFrame = pixelsPerSecond / 60; // 60 FPS
-            
-            this.currentPosition += pixelsPerFrame;
-            
-            // Start from below screen (100%) and scroll up to show content naturally
-            // The text will scroll from bottom to top, showing all content from the beginning
-            const translateY = -(this.currentPosition / window.innerHeight) * 100;
-            this.prompterText.style.transform = `translateY(${translateY}%)`;
-            
+
+            if (this.lastFrameTime === null) {
+                this.lastFrameTime = timestamp;
+            }
+
+            const deltaSeconds = (timestamp - this.lastFrameTime) / 1000;
+            this.lastFrameTime = timestamp;
+
+            const pixelsPerSecond = (this.speed / 60) * 12;
+            this.currentPosition += pixelsPerSecond * deltaSeconds;
+            this.currentPositionPercent = this.calculatePositionPercent();
+            this.applyTransform();
+
             this.animationId = requestAnimationFrame(scroll);
         };
-        
+
         this.animationId = requestAnimationFrame(scroll);
     }
-    
+
     stopScrolling() {
+        this.lastFrameTime = null;
+
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
@@ -399,6 +415,37 @@ class TeleprompterDisplay {
         const seconds = Math.floor((elapsed % 60000) / 1000);
         
         this.elapsedTime.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    setPosition(value) {
+        const numericValue = Number(value);
+        const targetPercent = Math.max(0, Math.min(100, Number.isFinite(numericValue) ? numericValue : 0));
+        this.currentPositionPercent = targetPercent;
+
+        const totalScrollablePixels = this.getTotalScrollablePixels();
+        this.currentPosition = (targetPercent / 100) * totalScrollablePixels;
+        this.applyTransform();
+    }
+
+    calculatePositionPercent() {
+        const totalScrollablePixels = this.getTotalScrollablePixels();
+        if (totalScrollablePixels <= 0) {
+            return 0;
+        }
+
+        return Math.max(0, Math.min(100, (this.currentPosition / totalScrollablePixels) * 100));
+    }
+
+    getTotalScrollablePixels() {
+        const viewportHeight = window.innerHeight || 1;
+        const totalContentHeight = this.prompterText.scrollHeight + viewportHeight;
+        return Math.max(1, totalContentHeight);
+    }
+
+    applyTransform() {
+        const viewportHeight = window.innerHeight || 1;
+        const translateY = -(this.currentPosition / viewportHeight) * 100;
+        this.prompterText.style.transform = `translateY(${translateY}%)`;
     }
     
     updateConnectionStatus(status, text) {

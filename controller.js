@@ -8,6 +8,7 @@ class TeleprompterController {
         this.pausedTime = 0;
         this.segmentDuration = 10 * 60 * 1000;
         this.speed = 150;
+        this.seekDebounceTimer = null;
         this.fontSize = 48;
         this.timerInterval = null;
         this.reconnectAttempts = 0;
@@ -15,6 +16,7 @@ class TeleprompterController {
         this.reconnectDelay = 1000;
         
         this.initializeElements();
+        this.updatePosition(0, false);
         this.bindEvents();
         this.connectWebSocket();
         this.updateDurationCalculations();
@@ -26,6 +28,10 @@ class TeleprompterController {
         this.clearBtn = document.getElementById('clear-text');
         this.speedControl = document.getElementById('speed-control');
         this.speedDisplay = document.getElementById('speed-display');
+        this.positionControl = document.getElementById('position-control');
+        this.positionDisplay = document.getElementById('position-display');
+        this.rewindBtn = document.getElementById('rewind-btn');
+        this.forwardBtn = document.getElementById('forward-btn');
         this.segmentMinutesInput = document.getElementById('segment-minutes');
         this.segmentSecondsInput = document.getElementById('segment-seconds');
         this.fontSizeControl = document.getElementById('font-size');
@@ -65,6 +71,10 @@ class TeleprompterController {
         this.fileUpload.addEventListener('change', (e) => this.handleFileUpload(e));
         this.clearBtn.addEventListener('click', () => this.clearText());
         this.speedControl.addEventListener('input', (e) => this.updateSpeed(e.target.value));
+        this.positionControl.addEventListener('input', (e) => this.updatePosition(parseFloat(e.target.value), true));
+        this.positionControl.addEventListener('change', (e) => this.updatePosition(parseFloat(e.target.value), false));
+        this.rewindBtn.addEventListener('click', () => this.adjustPosition(-5));
+        this.forwardBtn.addEventListener('click', () => this.adjustPosition(5));
         this.segmentMinutesInput.addEventListener('input', () => this.updateSegmentLength());
         this.segmentSecondsInput.addEventListener('input', () => this.updateSegmentLength());
         this.fontSizeControl.addEventListener('input', (e) => this.updateFontSize(e.target.value));
@@ -175,6 +185,7 @@ class TeleprompterController {
         
         // Send all current settings
         this.sendMessage({ type: 'setSpeed', value: this.speed });
+        this.sendMessage({ type: 'setPosition', value: parseFloat(this.positionControl.value) || 0 });
         this.sendMessage({ type: 'setFontSize', value: this.fontSize });
         this.updateSegmentLength(); // This will send the segment length
         this.sendMessage({ type: 'setMirrorMode', enabled: this.mirrorModeCheckbox.checked });
@@ -190,7 +201,13 @@ class TeleprompterController {
     handleMessage(data) {
         switch (data.type) {
             case 'stateSync':
-                // Server is syncing state - we're already the source of truth
+                if (typeof data.state.speed === 'number') {
+                    this.updateSpeed(data.state.speed);
+                }
+
+                if (typeof data.state.currentPositionPercent === 'number') {
+                    this.updatePosition(data.state.currentPositionPercent, false);
+                }
                 break;
                 
             case 'pong':
@@ -299,10 +316,33 @@ class TeleprompterController {
     }
     
     updateSpeed(value) {
-        this.speed = parseInt(value);
+        this.speed = Math.max(10, Math.min(600, parseInt(value, 10) || 150));
+        this.speedControl.value = this.speed;
         this.speedDisplay.textContent = this.speed;
         this.sendMessage({ type: 'setSpeed', value: this.speed });
         this.updateDurationCalculations();
+    }
+
+    updatePosition(value, isDebounced = false) {
+        const numericValue = Number(value);
+        const position = Math.max(0, Math.min(100, Number.isFinite(numericValue) ? numericValue : 0));
+        this.positionControl.value = Math.round(position * 10) / 10;
+        this.positionDisplay.textContent = `${Math.round(position)}%`;
+
+        if (isDebounced) {
+            clearTimeout(this.seekDebounceTimer);
+            this.seekDebounceTimer = setTimeout(() => {
+                this.sendMessage({ type: 'setPosition', value: position });
+            }, 50);
+            return;
+        }
+
+        this.sendMessage({ type: 'setPosition', value: position });
+    }
+
+    adjustPosition(deltaPercent) {
+        const current = parseFloat(this.positionControl.value) || 0;
+        this.updatePosition(current + deltaPercent, false);
     }
     
     updateSegmentLength() {
